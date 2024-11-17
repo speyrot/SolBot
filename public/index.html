@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SolBot Price Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #price-display, #balance-display {
+      margin-bottom: 20px;
+    }
+    #actions-log div {
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>SolBot Price Tracker</h1>
+  <div id="price-display">Current Price: -</div>
+  <div id="actions-log">Actions Log:</div>
+  <div id="balance-display">Account Balances:</div>
+  <script>
+    const ws = new WebSocket('ws://localhost:3000/');
+    const loggedTimestamps = new Set(); // Track unique timestamps for actions
+
+    ws.onopen = () => {
+      console.log('Connected to WebSocket');
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const priceDisplay = document.getElementById('price-display');
+      const actionsLog = document.getElementById('actions-log');
+      const balanceDisplay = document.getElementById('balance-display');
+
+      if (data.type === 'price') {
+        priceDisplay.innerText = `Current Price: ${data.value}`;
+      } else if (data.type === 'action') { // Handle 'action' events
+        const timestamp = data.timestamp;
+
+        if (!loggedTimestamps.has(timestamp)) {
+          loggedTimestamps.add(timestamp); // Avoid duplicates
+
+          const actionEntry = document.createElement('div');
+          actionEntry.innerText = `${data.action.toUpperCase()} at ${data.price} SOL on ${new Date(timestamp).toLocaleString()}`;
+          actionsLog.appendChild(actionEntry);
+        }
+      } else if (data.type === 'balance') {
+        balanceDisplay.innerHTML = 'Account Balances:<br>';
+
+        for (const [token, balance] of Object.entries(data.balances)) {
+          const balanceEntry = document.createElement('div');
+          balanceEntry.innerText = `${token}: ${balance.toFixed(4)}`;
+          balanceDisplay.appendChild(balanceEntry);
+        }
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket Error:', error);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+  </script>
+</body>
+</html>
